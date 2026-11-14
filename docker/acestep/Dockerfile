@@ -19,11 +19,12 @@ RUN git clone https://github.com/ACE-Step/ACE-Step-1.5 /opt/ACE-Step-1.5 \
 COPY fetch.py bf16.py /opt/
 WORKDIR /opt/ACE-Step-1.5
 # основний репозиторій (VAE, текстовий енкодер, turbo, LM 1.7B) — ACE-Step перевіряє його наявність
-RUN python3 /opt/fetch.py ACE-Step/Ace-Step1.5 checkpoints "*.json" "*.md" "*.txt" "*.py" "*.jinja" "vae/*" "Qwen3-Embedding-0.6B/*"
+RUN python3 /opt/fetch.py ACE-Step/Ace-Step1.5 checkpoints "-acestep-5Hz-lm-1.7B/*" "-acestep-v15-turbo/*"
 RUN python3 /opt/fetch.py ACE-Step/Ace-Step1.5 checkpoints "acestep-5Hz-lm-1.7B/*"
 RUN python3 /opt/fetch.py ACE-Step/Ace-Step1.5 checkpoints "acestep-v15-turbo/*"
 # XL SFT: 4 шматки по 5 ГБ fp32 → bf16 по 2.5 ГБ (ACE-Step однаково працює в bf16), по шару на кожен
-RUN python3 /opt/fetch.py ACE-Step/acestep-v15-xl-sft checkpoints/acestep-v15-xl-sft "*.json" "*.md" "*.py" "*.txt"
+# усе, крім ваг: silence_latent.pt, конфіги, код моделі (без silence_latent.pt XL не ініціалізується)
+RUN python3 /opt/fetch.py ACE-Step/acestep-v15-xl-sft checkpoints/acestep-v15-xl-sft "-model-*.safetensors"
 RUN python3 /opt/fetch.py ACE-Step/acestep-v15-xl-sft checkpoints/acestep-v15-xl-sft "model-00001-*" \
  && .venv/bin/python /opt/bf16.py checkpoints/acestep-v15-xl-sft/model-00001-*.safetensors
 RUN python3 /opt/fetch.py ACE-Step/acestep-v15-xl-sft checkpoints/acestep-v15-xl-sft "model-00002-*" \
@@ -33,10 +34,11 @@ RUN python3 /opt/fetch.py ACE-Step/acestep-v15-xl-sft checkpoints/acestep-v15-xl
 RUN python3 /opt/fetch.py ACE-Step/acestep-v15-xl-sft checkpoints/acestep-v15-xl-sft "model-00004-*" \
  && .venv/bin/python /opt/bf16.py checkpoints/acestep-v15-xl-sft/model-00004-*.safetensors
 # LM 4B (уже bf16)
-RUN python3 /opt/fetch.py ACE-Step/acestep-5Hz-lm-4B checkpoints/acestep-5Hz-lm-4B "*.json" "*.md" "*.txt" "*.jinja"
+RUN python3 /opt/fetch.py ACE-Step/acestep-5Hz-lm-4B checkpoints/acestep-5Hz-lm-4B "-model-*.safetensors"
 RUN python3 /opt/fetch.py ACE-Step/acestep-5Hz-lm-4B checkpoints/acestep-5Hz-lm-4B "model-00001-*"
 RUN python3 /opt/fetch.py ACE-Step/acestep-5Hz-lm-4B checkpoints/acestep-5Hz-lm-4B "model-00002-*"
-RUN rm -rf /root/.cache checkpoints/.cache */.cache 2>/dev/null; du -sh checkpoints/* /opt/ACE-Step-1.5/.venv \
+RUN rm -rf /root/.cache checkpoints/.cache */.cache 2>/dev/null; du -sh checkpoints/* /opt/ACE-Step-1.5/.venv && ls checkpoints/acestep-v15-xl-sft checkpoints/acestep-v15-turbo \
+ && test -f checkpoints/acestep-v15-xl-sft/silence_latent.pt \
  && .venv/bin/python -c "import acestep, torch; print('acestep ok, torch', torch.__version__)"
 
 LABEL org.opencontainers.image.description="Dragon Factory: ACE-Step 1.5 XL SFT (bf16) + LM 4B, предустановлено для RunPod"
